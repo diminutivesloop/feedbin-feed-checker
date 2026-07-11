@@ -102,7 +102,7 @@ export default async function () {
         .sort((a, b) => b - a);
 
       if (timestamps.length < 2) {
-        skipReasons.push(`${subscription.feed_id}:insufficient_entries`);
+        skipReasons.push(`${subscription.feed_id} (${subscription.title}):insufficient_entries`);
         continue;
       }
 
@@ -117,13 +117,13 @@ export default async function () {
       }
 
       if (intervalsMs.length === 0) {
-        skipReasons.push(`${subscription.feed_id}:non_positive_intervals`);
+        skipReasons.push(`${subscription.feed_id} (${subscription.title}):non_positive_intervals`);
         continue;
       }
 
       const meanIntervalMs = mean(intervalsMs);
       if (meanIntervalMs <= 0) {
-        skipReasons.push(`${subscription.feed_id}:invalid_mean_interval`);
+        skipReasons.push(`${subscription.feed_id} (${subscription.title}):invalid_mean_interval`);
         continue;
       }
 
@@ -146,7 +146,7 @@ export default async function () {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      skipReasons.push(`${subscription.feed_id}:fetch_or_parse_error:${message}`);
+      skipReasons.push(`${subscription.feed_id} (${subscription.title}):fetch_or_parse_error:${message}`);
     }
   }
 
