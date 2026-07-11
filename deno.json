@@ -1,10 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/denoland/deno/98f62cee78e85bfc47c62ed703777c6bc8794f1c/cli/schemas/config-file.v1.json",
   "lock": false,
+  "tasks": {
+    "local-test": "deno --allow-env --allow-read='.env' --allow-net='api.feedbin.com' local-test.ts",
+    "check": "deno check --allow-import=www.val.town,jsr.io"
+  },
   "compilerOptions": {
     "noImplicitAny": false,
     "strict": true,
-    "types": ["https://www.val.town/types/valtown.d.ts"],
+    "types": [
+      "https://www.val.town/types/valtown.d.ts"
+    ],
     "lib": [
       "dom",
       "dom.iterable",
@@ -14,9 +20,13 @@
     ]
   },
   "lint": {
-    "include": ["deno:/https/esm.town/**/*"],
+    "include": [
+      "deno:/https/esm.town/**/*"
+    ],
     "rules": {
-      "exclude": ["no-explicit-any"]
+      "exclude": [
+        "no-explicit-any"
+      ]
     }
   },
   "node_modules_dir": false,
