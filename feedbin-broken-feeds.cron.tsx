@@ -170,6 +170,9 @@ export default async function () {
       }
       if (feed.feedLink) {
         console.log(`   Feed: ${feed.feedLink}`);
+        console.log(
+          `   Feedbin subscriptions: https://feedbin.com/settings/subscriptions?q=${encodeURIComponent(feed.feedLink)}`,
+        );
       }
       console.log(
         `   Latest published: ${feed.latestPublishedIso} (${feed.latestPublishedRelative} ago)`,
