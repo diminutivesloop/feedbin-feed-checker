@@ -1,4 +1,3 @@
-- Use `deno task local-test` to run the program locally.
 - Use `deno task check` to check the code for errors.
 - Use `deno task test` to run the project's test suite.
 - Use the above tasks instead of running `deno` commands directly (e.g. `deno test`) since the tasks already include the necessary permission flags.
