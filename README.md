@@ -6,6 +6,7 @@ Checks for broken feeds in Feedbin by checking if the time since last publish is
 - `deno task check` - Check code for errors.
 
 ## Enhancements
+- [ ] show badge for newly stale feeds
 - [ ] support ignored feeds
 - [ ] cache feedbin api requests
 
