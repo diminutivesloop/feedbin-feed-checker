@@ -8,6 +8,7 @@ Checks for broken feeds in Feedbin by checking if the time since last publish is
 ## Enhancements
 - [x] show badge for newly stale feeds
 - [x] cache feedbin api requests
+- [ ] calculate entry intervals using whole days
 - [ ] support ignored feeds
 
 🤖 Built w/ substantial help from GitHub Copilot
