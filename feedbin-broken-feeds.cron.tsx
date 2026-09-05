@@ -1,24 +1,28 @@
 const THRESHOLD_MULTIPLIER = 4;
 
+import { email } from "https://esm.town/v/std/email";
+import { escape } from "jsr:@std/html@1.0.5/entities";
 import {
   ENTRY_SAMPLE_SIZE,
   type FeedbinEntry, getFeedEntries,
   getSubscriptions
 } from "./feedbin.ts";
 
-type FlaggedFeed = {
+export type FlaggedFeed = {
   title: string;
   sitelink?: string;
   feedLink?: string;
-  latestPublishedIso: string;
+  faviconUrl?: string;
+  latestPublishedDate: string;
   latestPublishedRelative: string;
+  publishFrequency: string;
   meanIntervalDays: number;
   currentGapDays: number;
   thresholdDays: number;
   ratio: number;
 };
 
-function parseEntryTimestampMs(entry: FeedbinEntry): number | null {
+export function parseEntryTimestampMs(entry: FeedbinEntry): number | null {
   const candidate = entry.published ?? entry.created_at;
   if (!candidate) {
     return null;
@@ -28,7 +32,7 @@ function parseEntryTimestampMs(entry: FeedbinEntry): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function mean(values: number[]): number {
+export function mean(values: number[]): number {
   if (values.length === 0) {
     return 0;
   }
@@ -36,7 +40,7 @@ function mean(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function formatCompactRelative(ms: number): string {
+export function formatCompactRelative(ms: number): string {
   const safeMs = Math.max(0, Math.floor(ms));
   const seconds = Math.floor(safeMs / 1000);
 
@@ -73,11 +77,130 @@ function formatCompactRelative(ms: number): string {
   return `${years}y`;
 }
 
-function daysFromMs(ms: number): number {
+function getDurationParts(ms: number) {
+  const safeMs = Math.max(0, ms);
+  const seconds = safeMs / 1000;
+
+  if (seconds < 60) {
+    return { value: Math.round(seconds), unit: "second" };
+  }
+
+  const minutes = seconds / 60;
+  if (minutes < 60) {
+    return { value: Math.round(minutes), unit: "minute" };
+  }
+
+  const hours = minutes / 60;
+  if (hours < 24) {
+    return { value: Math.round(hours), unit: "hour" };
+  }
+
+  const days = hours / 24;
+  if (days < 7) {
+    return { value: Math.round(days), unit: "day" };
+  }
+
+  const weeks = days / 7;
+  if (weeks < 5) {
+    return { value: Math.round(weeks), unit: "week" };
+  }
+
+  const months = days / 30;
+  if (months < 12) {
+    return { value: Math.round(months), unit: "month" };
+  }
+
+  const years = days / 365;
+  return { value: Math.round(years), unit: "year" };
+}
+
+export function daysFromMs(ms: number): number {
   return ms / (1000 * 60 * 60 * 24);
 }
 
-export default async function () {
+export function formatHumanDate(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function pluralize(value: number, unit: string): string {
+  const rounded = Math.round(value);
+  return `${rounded} ${unit}${rounded === 1 ? "" : "s"}`;
+}
+
+export function formatDuration(ms: number, compact: boolean = false): string {
+  const parts = getDurationParts(ms);
+
+  if (compact) {
+    const unitMap: Record<string, string> = {
+      second: "s",
+      minute: "m",
+      hour: "h",
+      day: "d",
+      week: "w",
+      month: "mo",
+      year: "y",
+    };
+    return `${parts.value}${unitMap[parts.unit]}`;
+  } else {
+    return pluralize(parts.value, parts.unit);
+  }
+}
+
+export function getFaviconUrl(siteUrl?: string): string | undefined {
+  if (!siteUrl) {
+    return undefined;
+  }
+
+  try {
+    const hostname = new URL(siteUrl).hostname;
+    return `https://www.google.com/s2/favicons?sz=16&domain_url=${hostname}`;
+  } catch {
+    return undefined;
+  }
+}
+
+export function buildEmailHtml(flaggedFeeds: FlaggedFeed[]): string {
+  if (flaggedFeeds.length === 0) {
+    return "<p>No potentially broken feeds detected.</p>";
+  }
+
+  const items = flaggedFeeds.map((feed) => {
+    const faviconImg = feed.faviconUrl
+      ? `<img src="${feed.faviconUrl}" alt="" width="16" height="16" style="vertical-align:middle;margin-right:6px;" />`
+      : "";
+    const titleHtml = `${faviconImg}${escape(feed.title)}`;
+    const lines: string[] = [
+      `<strong>${feed.feedLink ? `<a href="${feed.feedLink}">${titleHtml}</a>` : titleHtml}</strong>`,
+    ];
+
+    const links: string[] = [];
+    if (feed.sitelink) {
+      links.push(`<a href="${feed.sitelink}">Site</a>`);
+    }
+    if (feed.feedLink) {
+      const subscriptionsUrl = `https://feedbin.com/settings/subscriptions?q=${encodeURIComponent(feed.feedLink)}`;
+      links.push(`<a href="${subscriptionsUrl}">Feedbin subscription</a>`);
+    }
+    if (links.length > 0) {
+      lines.push(links.join(" · "));
+    }
+
+    lines.push(
+      `Latest published: ${feed.latestPublishedDate} (${feed.latestPublishedRelative} ago)`,
+    );
+    lines.push(`Usually publishes every ${feed.publishFrequency}`);
+
+    return `<li>${lines.join("<br>")}</li>`;
+  });
+
+  return `<ol>${items.join("")}</ol>`;
+}
+
+export default async function (sendEmail = true) {
   const startedAt = new Date();
   const nowMs = Date.now();
 
@@ -136,8 +259,10 @@ export default async function () {
           title,
           sitelink: subscription.site_url ?? undefined,
           feedLink: subscription.feed_url ?? undefined,
-          latestPublishedIso: new Date(latestPublishedMs).toISOString(),
-          latestPublishedRelative: formatCompactRelative(currentGapMs),
+          faviconUrl: getFaviconUrl(subscription.site_url ?? undefined),
+          latestPublishedDate: formatHumanDate(latestPublishedMs),
+          latestPublishedRelative: formatDuration(currentGapMs, true),
+          publishFrequency: formatDuration(meanIntervalMs, false),
           meanIntervalDays: daysFromMs(meanIntervalMs),
           currentGapDays: daysFromMs(currentGapMs),
           thresholdDays: daysFromMs(thresholdMs),
@@ -175,8 +300,9 @@ export default async function () {
         );
       }
       console.log(
-        `   Latest published: ${feed.latestPublishedIso} (${feed.latestPublishedRelative} ago)`,
+        `   Latest published: ${feed.latestPublishedDate} (${feed.latestPublishedRelative} ago)`,
       );
+      console.log(`   Usually publishes every ${feed.publishFrequency}`);
       console.log(
         `   Gap: ${feed.currentGapDays.toFixed(2)}d | Mean interval: ${feed.meanIntervalDays.toFixed(2)}d | Threshold (x${THRESHOLD_MULTIPLIER}): ${feed.thresholdDays.toFixed(2)}d`,
       );
@@ -189,5 +315,12 @@ export default async function () {
     for (const reason of skipReasons) {
       console.log(`- ${reason}`);
     }
+  }
+
+  if (sendEmail) {
+    await email({
+      subject: `Feedbin Broken Feed Check (${flaggedFeeds.length})`,
+      html: buildEmailHtml(flaggedFeeds),
+    });
   }
 }
