@@ -2,8 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/denoland/deno/98f62cee78e85bfc47c62ed703777c6bc8794f1c/cli/schemas/config-file.v1.json",
   "lock": false,
   "tasks": {
-    "local-test": "deno --allow-env --allow-read='.env' --allow-net='api.feedbin.com' local-test.ts",
-    "check": "deno check --allow-import=www.val.town,jsr.io"
+    "local-test": "deno --allow-env --allow-import='jsr.io,esm.town' --allow-read='.env' --allow-net='api.feedbin.com' local-test.ts",
+    "check": "deno check --allow-import=www.val.town,jsr.io,esm.town",
+    "test": "deno test --allow-import='www.val.town,jsr.io,esm.town'" 
   },
   "compilerOptions": {
     "noImplicitAny": false,
