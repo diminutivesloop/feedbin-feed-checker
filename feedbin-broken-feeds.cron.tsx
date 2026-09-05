@@ -3,9 +3,8 @@ const THRESHOLD_MULTIPLIER = 4;
 import { email } from "https://esm.town/v/std/email";
 import { escape } from "jsr:@std/html@1.0.5/entities";
 import {
-  ENTRY_SAMPLE_SIZE,
-  type FeedbinEntry, getFeedEntries,
-  getSubscriptions
+  ENTRY_SAMPLE_SIZE, getFeedEntries, getSubscriptions, pruneCache,
+  type FeedbinEntry,
 } from "./feedbin.ts";
 import {
   daysFromMs,
@@ -169,6 +168,8 @@ export default async function (sendEmail = true) {
       skipReasons.push(`${subscription.feed_id} (${subscription.title}):fetch_or_parse_error:${message}`);
     }
   }
+
+  await pruneCache();
 
   flaggedFeeds.sort((a, b) => b.ratio - a.ratio);
 
