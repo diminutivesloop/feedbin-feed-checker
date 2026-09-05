@@ -1,5 +1,7 @@
 const THRESHOLD_MULTIPLIER = 4;
+const PREVIOUS_FEED_IDS_BLOB_KEY = "previous-report:flagged-feed-ids";
 
+import { blob } from "https://esm.town/v/std/blob/main.ts";
 import { email } from "https://esm.town/v/std/email";
 import { escape } from "jsr:@std/html@1.0.5/entities";
 import {
@@ -13,6 +15,7 @@ import {
 } from "./formatting.ts";
 
 export type FlaggedFeed = {
+  feedId: number;
   title: string;
   sitelink?: string;
   feedLink?: string;
@@ -24,6 +27,7 @@ export type FlaggedFeed = {
   currentGapDays: number;
   thresholdDays: number;
   ratio: number;
+  isNew?: boolean;
 };
 
 export function parseEntryTimestampMs(entry: FeedbinEntry): number | null {
@@ -67,8 +71,11 @@ export function buildEmailHtml(flaggedFeeds: FlaggedFeed[]): string {
       ? `<img src="${feed.faviconUrl}" alt="" width="16" height="16" style="vertical-align:middle;margin-right:6px;" />`
       : "";
     const titleHtml = `${faviconImg}${escape(feed.title)}`;
+    const newBadge = feed.isNew
+      ? ` <span style="background-color:#2da44e;color:#ffffff;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:10px;vertical-align:middle;">NEW</span>`
+      : "";
     const lines: string[] = [
-      `<strong>${feed.feedLink ? `<a href="${feed.feedLink}">${titleHtml}</a>` : titleHtml}</strong>`,
+      `<strong>${feed.feedLink ? `<a href="${feed.feedLink}">${titleHtml}</a>` : titleHtml}</strong>${newBadge}`,
     ];
 
     const links: string[] = [];
@@ -150,6 +157,7 @@ export default async function (sendEmail = true) {
       if (currentGapMs > thresholdMs) {
         const title = subscription.title?.trim() || `Feed ${subscription.feed_id}`;
         flaggedFeeds.push({
+          feedId: subscription.feed_id,
           title,
           sitelink: subscription.site_url ?? undefined,
           feedLink: subscription.feed_url ?? undefined,
@@ -171,12 +179,25 @@ export default async function (sendEmail = true) {
 
   await pruneCache();
 
-  flaggedFeeds.sort((a, b) => b.ratio - a.ratio);
+  flaggedFeeds.sort((a, b) => a.ratio - b.ratio);
+
+  const previousFeedIds = new Set(
+    await blob.getJSON<number[]>(PREVIOUS_FEED_IDS_BLOB_KEY) ?? [],
+  );
+  for (const feed of flaggedFeeds) {
+    feed.isNew = !previousFeedIds.has(feed.feedId);
+  }
+  await blob.setJSON(
+    PREVIOUS_FEED_IDS_BLOB_KEY,
+    flaggedFeeds.map((feed) => feed.feedId),
+  );
+  const newFeedCount = flaggedFeeds.filter((feed) => feed.isNew).length;
 
   console.log("Feedbin Potentially Broken Feed Check");
   console.log(`Run timestamp: ${startedAt.toISOString()}`);
   console.log(`Subscriptions checked: ${subscriptions.length}`);
   console.log(`Potentially broken feeds: ${flaggedFeeds.length}`);
+  console.log(`New since previous report: ${newFeedCount}`);
   console.log(`Skipped subscriptions: ${skipReasons.length}`);
   console.log("");
 
@@ -185,7 +206,7 @@ export default async function (sendEmail = true) {
   } else {
     console.log("Potentially broken feeds:");
     for (const [index, feed] of flaggedFeeds.entries()) {
-      console.log(`${index + 1}. ${feed.title}`);
+      console.log(`${index + 1}. ${feed.title}${feed.isNew ? " [NEW]" : ""}`);
       if (feed.sitelink) {
         console.log(`   Site: ${feed.sitelink}`);
       }

@@ -79,6 +79,7 @@ Deno.test("buildEmailHtml returns a message when there are no flagged feeds", ()
 Deno.test("buildEmailHtml renders feed details with escaped title and links", () => {
   const feeds: FlaggedFeed[] = [
     {
+      feedId: 1,
       title: "<Broken> & Feed",
       sitelink: "https://example.com",
       feedLink: "https://example.com/rss.xml",
@@ -99,4 +100,38 @@ Deno.test("buildEmailHtml renders feed details with escaped title and links", ()
     '<ol><li><strong><a href="https://example.com/rss.xml"><img src="https://www.google.com/s2/favicons?sz=16&domain_url=example.com" alt="" width="16" height="16" style="vertical-align:middle;margin-right:6px;" />&lt;Broken&gt; &amp; Feed</a></strong><br><a href="https://example.com">Site</a> · <a href="https://feedbin.com/settings/subscriptions?q=https%3A%2F%2Fexample.com%2Frss.xml">Feedbin subscription</a><br>Latest published: August 1, 2026 (30d ago)<br>Usually publishes every 3 days</li></ol>';
 
   assertEquals(html, expected);
+});
+
+Deno.test("buildEmailHtml renders a NEW badge for feeds not in the previous report", () => {
+  const feeds: FlaggedFeed[] = [
+    {
+      feedId: 2,
+      title: "Fresh Feed",
+      latestPublishedDate: "August 1, 2026",
+      latestPublishedRelative: "10d",
+      publishFrequency: "2 days",
+      meanIntervalDays: 2,
+      currentGapDays: 10,
+      thresholdDays: 2,
+      ratio: 5,
+      isNew: true,
+    },
+    {
+      feedId: 3,
+      title: "Returning Feed",
+      latestPublishedDate: "July 1, 2026",
+      latestPublishedRelative: "40d",
+      publishFrequency: "4 days",
+      meanIntervalDays: 4,
+      currentGapDays: 40,
+      thresholdDays: 4,
+      ratio: 10,
+    },
+  ];
+
+  const html = buildEmailHtml(feeds);
+
+  assertStringIncludes(html, "Fresh Feed</strong> <span");
+  assertStringIncludes(html, ">NEW</span>");
+  assertStringIncludes(html, "Returning Feed</strong><br>");
 });

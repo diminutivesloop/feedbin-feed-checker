@@ -6,8 +6,8 @@ Checks for broken feeds in Feedbin by checking if the time since last publish is
 - `deno task test` - Run the test suite.
 
 ## Enhancements
-- [ ] show badge for newly stale feeds
-- [ ] support ignored feeds
+- [x] show badge for newly stale feeds
 - [x] cache feedbin api requests
+- [ ] support ignored feeds
 
 🤖 Built w/ substantial help from GitHub Copilot
