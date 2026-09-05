@@ -7,6 +7,11 @@ import {
   type FeedbinEntry, getFeedEntries,
   getSubscriptions
 } from "./feedbin.ts";
+import {
+  daysFromMs,
+  formatDuration,
+  formatHumanDate,
+} from "./formatting.ts";
 
 export type FlaggedFeed = {
   title: string;
@@ -38,116 +43,6 @@ export function mean(values: number[]): number {
   }
 
   return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-export function formatCompactRelative(ms: number): string {
-  const safeMs = Math.max(0, Math.floor(ms));
-  const seconds = Math.floor(safeMs / 1000);
-
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h`;
-  }
-
-  const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return `${days}d`;
-  }
-
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) {
-    return `${weeks}w`;
-  }
-
-  const months = Math.floor(days / 30);
-  if (months < 12) {
-    return `${months}mo`;
-  }
-
-  const years = Math.floor(days / 365);
-  return `${years}y`;
-}
-
-function getDurationParts(ms: number) {
-  const safeMs = Math.max(0, ms);
-  const seconds = safeMs / 1000;
-
-  if (seconds < 60) {
-    return { value: Math.round(seconds), unit: "second" };
-  }
-
-  const minutes = seconds / 60;
-  if (minutes < 60) {
-    return { value: Math.round(minutes), unit: "minute" };
-  }
-
-  const hours = minutes / 60;
-  if (hours < 24) {
-    return { value: Math.round(hours), unit: "hour" };
-  }
-
-  const days = hours / 24;
-  if (days < 7) {
-    return { value: Math.round(days), unit: "day" };
-  }
-
-  const weeks = days / 7;
-  if (weeks < 5) {
-    return { value: Math.round(weeks), unit: "week" };
-  }
-
-  const months = days / 30;
-  if (months < 12) {
-    return { value: Math.round(months), unit: "month" };
-  }
-
-  const years = days / 365;
-  return { value: Math.round(years), unit: "year" };
-}
-
-export function daysFromMs(ms: number): number {
-  return ms / (1000 * 60 * 60 * 24);
-}
-
-export function formatHumanDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-export function pluralize(value: number, unit: string): string {
-  const rounded = Math.round(value);
-  return `${rounded} ${unit}${rounded === 1 ? "" : "s"}`;
-}
-
-export function formatDuration(ms: number, compact: boolean = false): string {
-  const parts = getDurationParts(ms);
-
-  if (compact) {
-    const unitMap: Record<string, string> = {
-      second: "s",
-      minute: "m",
-      hour: "h",
-      day: "d",
-      week: "w",
-      month: "mo",
-      year: "y",
-    };
-    return `${parts.value}${unitMap[parts.unit]}`;
-  } else {
-    return pluralize(parts.value, parts.unit);
-  }
 }
 
 export function getFaviconUrl(siteUrl?: string): string | undefined {
