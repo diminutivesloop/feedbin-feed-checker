@@ -11,4 +11,4 @@ Checks for broken feeds in Feedbin by checking if the time since last publish is
 - [ ] calculate entry intervals using whole days
 - [ ] support ignored feeds
 
-🤖 Built w/ substantial help from GitHub Copilot
+🤖 Built w/ help from AI
